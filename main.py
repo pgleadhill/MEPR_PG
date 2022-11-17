@@ -8,22 +8,27 @@
 
 #################################################################################
 #################################################################################
-#       STEP 1 - Read all the data 
-#       STEP 2 - Plot the DATA  
-#                   - function to parse pv values/date/time        
-#       STEP 3 - Statistics functions on pv values .describe() etc
-#       STEP 4 - how volitile is the data (rate of change?)
-#       STEP 5 -                                
+#       STEP 1 - Data Reading 
+#       STEP 2 - Data Cleaning  
+#       STEP 3 - Data Wrangling
+#       STEP 4 - Data Analysis 
+#            4.1 - Plotting                      
+#            4.2 - Statistics functions on pv values .describe() etc
+#            4.2 - how volitile is the data (rate of change?)
+#                                         
 #################################################################################
 #################################################################################
 #   import requried libraries
 import numpy as np
 import pandas as pd
 import os
+import math
 from os.path import isfile, join
 from typing import List
-import matplotlib.pyplot as plt
-
+import matplotlib.pyplot as plt # could use seaborn?
+import datetime
+#import scipy.integrate as integrate     
+#import scipy.special as special 
 
 #   object representing tags in files
 class PlottingTags:
@@ -47,9 +52,21 @@ class SiteData:
     def set_time_range(self, range):
         self.timerange = range
 
+    def set_graph_params(self, startx, stopx, stepx):
+        self.startx = startx
+        self.stopx = stopx
+        self.stepx = stepx
+
+
+
+
+
+
+
+
 #################################################################################
 #################################################################################
-#       STEP 1 - Read all the data                                 
+#       STEP 1 - Data Reading                                
 #################################################################################
 #################################################################################
 
@@ -76,7 +93,7 @@ def get_all_sites():
             if siteName.split("_")[0] in _file:
                 siteFilesList.append(_file)
                 #print("Site name = {} in file {}".format(siteName, _file))
-        sitesList.append(SiteData(siteName, siteFilesList))
+        sitesList.append(SiteData(siteName.split("_")[0], siteFilesList))
     return sitesList
 
 
@@ -92,27 +109,57 @@ def read_csv_for_site(siteFiles: List[str]):
     # for every csv for a given site, combine them into one single csv (merge)
     for i in range(len(data_frames)):
         if i == 0:
-            _frame = data_frames[i]
+            _frame = data_frames[i].rename(columns=lambda x: x.strip())
         else:
             try:
-               _frame = _frame.merge(data_frames[i], how='outer')
+               _frame = _frame.merge(data_frames[i].rename(columns=lambda x: x.strip()), how='outer')
             except:
                 print("An exception occurred")
-    #print(_frame)
-    if _frame is not None:     
-        for column in _frame.columns:
-            try:
-                _frame = _frame[column].str.strip()
-            except:
-                print("Stripping no good bro")
-                print(filePath)
-            print(_frame)
     return _frame
 
 #################################################################################
 #################################################################################
-#       STEP 2 - Plot the DATA                                 
+#       STEP 2 - Data Cleaning                                
 #################################################################################
+#################################################################################
+
+
+def data_clean(site: SiteData):
+
+    time_arr = []
+    for i in range(len(site.csv["DATE"])):
+        dtstr = "{} {}".format(site.csv["DATE"][i].replace(" ", ""), site.csv["TIME"][i].replace(" ", ""))
+        time_arr.append(datetime.datetime.strptime(dtstr, '%d/%m/%Y %H:%M:%S.%f'))
+        #print(time_arr)
+        site.csv.head()
+   
+    clean_cols = []
+    for item in site.csv[site.csv.columns[j]]:
+        for rows in site.csv[site.csv.values]:
+            try:
+                clean_cols.append(float(item.replace(" ","")))
+            except:
+                 clean_cols.append(0)    
+
+    clean_col_3 = []
+    for item in site.csv[site.csv.columns[3]]:
+        try:
+            clean_col_3.append(float(item.replace(" ", "")))
+        except:
+            clean_col_3.append(0)
+
+
+    clean_col_4 = []
+    for item in site.csv[site.csv.columns[4]]:
+        try:
+            clean_col_4.append(float(item.replace(" ", "")))
+        except:
+            clean_col_4.append(0)
+
+
+#################################################################################
+#################################################################################
+#       STEP 4.1 - Data Analysis - Plotting                                
 #################################################################################
 
 #   function for plotting tags with matplotlib 
@@ -125,43 +172,44 @@ def read_csv_for_site(siteFiles: List[str]):
 #
 #   figure for object oriented graphing. 
 #   x axis is time/date, y1 axis level, y2 axis flow rate
-#      
- def plot_csv_site(site: SiteData, plottingTags: PlottingTags):
-    if site.csv is not None:
-        #print(site.csv.columns)
-        #print(plottingTags.exampleTag)
-        #plt.plot(site.csv[site.csv.columns[1]], site.csv[site.csv.columns[-1]])
-        plt.plot(site.siteName, plottingTags.time_range)
-       # plt.show()       
-        
-        fig, ax1 = plt.subplots()
-        
-        ax1.set_ylabel("Level (m)", color="blue")
-        ax1.set_xlabel("time")
-        ax1.plot(   , distance, "blue")
-        ax1.set_yticks(np.linspace(*ax1.get_ybound(), 10))
-        ax1.tick_params(axis="y", labelcolor="blue")
-        ax1.xaxis.grid()
-        ax1.yaxis.grid()
-        
-        ax2 = ax1.twinx() # create another y-axis sharing a common x-axis
-        
-        
-        ax2.set_ylabel("Flow (L/s)", color="green")
-        ax2.set_xlabel("Flow")
-        
-        ax2.tick_params(axis="y", labelcolor="green")
-        ax2.plot(time, velocity, "green")
-        ax2.set_yticks(np.linspace(*ax2.get_ybound(), 10))
-        
-        fig.set_size_inches(7,5)
-        fig.set_dpi(100)
-        fig.legend(["Level", "Flow"])
-        plt.show()
-        
-# this should have our plot of res vs flow per site
 
 
+
+
+def plot_csv_site(site: SiteData):
+    print("nothing")
+    fig, ax1 = plt.subplots()
+
+    ax1.set_ylabel("{}".format(site.csv.columns[3]))
+    ax1.set_xlabel("time")
+
+    ax1.plot(time_arr, clean_col_3, "blue")
+
+    ax2 = ax1.twinx() # create another y-axis sharing a common x-axis
+
+
+    ax2.set_ylabel("{}".format(site.csv.columns[4]))
+    ax2.set_xlabel("time")
+    ax2.plot(time_arr, clean_col_4, "green")
+
+    fig.set_size_inches(7,5)
+    fig.set_dpi(100)
+
+    plt.show()
+    print("Finished charting")
+  
+
+
+#################################################################################
+#################################################################################
+#       STEP 4.2 - Data Analysis - Statistics                                
+#################################################################################
+#################################################################################
+#           .describe()       #min/max/mean/dist
+#       Integrate the Tank level with scipy     https://docs.scipy.org/doc/scipy/tutorial/integrate.html        
+#        
+#       divide by quaters for seasons 
+#
 #################################################################################
 #################################################################################
 
@@ -170,8 +218,11 @@ def read_csv_for_site(siteFiles: List[str]):
 def main():
     sites:List[SiteData] = get_all_sites()
     siteDict = {}
+    count = 0
     for site in sites:
+        # Create a single CSV (dataframe) that consists of the time column and every other column from the other csv files
         siteCsv = read_csv_for_site(site.csvFiles)
+        # Set the single csv for the site
         site.set_combines_site_csv(siteCsv)
         if siteCsv is not None:
         #print(siteCsv)
@@ -182,14 +233,18 @@ def main():
                 if len(time_entries) > 2:
                     try:
                         time_bound = (time_entries[0], time_entries[len(time_entries) - 1])
-                        print(time_bound)
+                     #   print(time_bound)
                     except:
                         print("A time series exception occurred")
             except:
                 print("Could not get time entires for site = " + site.siteName)
             #time_bound = (time_entries[0], time_entries[-1])
-    #print(site_to_test.csv[site_to_test.csv.columns[1]])
-    plot_csv_site(site, plottingTags)
+    #print(site_to_tes
+    # t.csv[site_to_test.csv.colums[1]]) 
+    for site in sites:
+     if site.siteName == "ALEXHIL":
+            plot_csv_site(site)
+     
 #   main executable for program
 main()
 
